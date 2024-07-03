@@ -1,0 +1,11 @@
+B ../_build/default/logoLib/.logoLib.objs
+B /Users/lukeg/.opam/4.10.2+flambda/lib/cairo2
+B /Users/lukeg/.opam/4.10.2+flambda/lib/gg
+B /Users/lukeg/.opam/4.10.2+flambda/lib/ocaml
+B /Users/lukeg/.opam/4.10.2+flambda/lib/vg
+FLG -open LogoLib -w -40
+S .
+S /Users/lukeg/.opam/4.10.2+flambda/lib/cairo2
+S /Users/lukeg/.opam/4.10.2+flambda/lib/gg
+S /Users/lukeg/.opam/4.10.2+flambda/lib/ocaml
+S /Users/lukeg/.opam/4.10.2+flambda/lib/vg

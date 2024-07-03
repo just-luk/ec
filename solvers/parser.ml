@@ -22,7 +22,7 @@ let constant_parser (k : string) : unit parsing =
   fun (s,n) ->
     let rec check consumed =
       if consumed = String.length k then true else
-      if n + consumed >= String.length s || s.[n + consumed] <> k.[consumed] then false else
+      if n + consumed >= String.length s || Char.(s.[n + consumed] <> k.[consumed]) then false else
         check (consumed + 1)
     in
     if check 0 then [(),n + String.length k] else []

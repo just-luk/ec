@@ -323,7 +323,7 @@ let enumerate_for_tasks enumeration_backend ?verbose:(verbose = true)
   (* We will only ever maintain maximumFrontier best solutions *)
   let hits =
     Array.init nt ~f:(fun _ -> 
-        Heap.create
+        Pairing_heap.create
           ~cmp:(fun h1 h2 ->
               Float.compare (h1.hit_likelihood+.h1.hit_prior) (h2.hit_likelihood+.h2.hit_prior))
           ()) in
@@ -335,7 +335,7 @@ let enumerate_for_tasks enumeration_backend ?verbose:(verbose = true)
   let total_number_of_enumerated_programs = ref 0 in
 
   while not (enumeration_timed_out()) &&
-          List.exists (range nt) ~f:(fun j -> Heap.length hits.(j) < maximumFrontier.(j))
+          List.exists (range nt) ~f:(fun j -> Pairing_heap.length hits.(j) < maximumFrontier.(j))
        && !lower_bound +. budgetIncrement <= upperBound
   do
     Printf.eprintf "%f, %f, %fs\n"
@@ -344,13 +344,13 @@ let enumerate_for_tasks enumeration_backend ?verbose:(verbose = true)
     let number_of_enumerated_programs = ref 0 in
       let final_results =
         (* Returns a list of "final results" *)
-        (* Each final result is [Array.map ~f:Heap.to_list hits] *)
+        (* Each final result is [Array.map ~f:Pairing_heap.to_list hits] *)
         (* We flatten it to get a list of arrays of heaps *)
         enumeration_backend
           (!lower_bound) (!lower_bound +. budgetIncrement)
           ~final:(fun () ->
               (* Printf.eprintf "%d\n" !number_of_enumerated_programs; flush_everything(); *)
-              [(Array.map ~f:Heap.to_list hits, !number_of_enumerated_programs)])
+              [(Array.map ~f:Pairing_heap.to_list hits, !number_of_enumerated_programs)])
           (fun p logPrior ->
              incr number_of_enumerated_programs;
              incr total_number_of_enumerated_programs;
@@ -365,13 +365,13 @@ let enumerate_for_tasks enumeration_backend ?verbose:(verbose = true)
                  if is_valid logLikelihood then begin
                    let dt = Time.abs_diff startTime (Time.now ())
                             |> Time.Span.to_sec in
-                   Heap.add hits.(j)
+                   Pairing_heap.add hits.(j)
                      {hit_program = string_of_program p;
                       hit_prior = logPrior;
                       hit_likelihood = logLikelihood;
                       hit_time = dt;} ;
-                   while Heap.length hits.(j) > maximumFrontier.(j) do
-                     Heap.remove_top hits.(j)
+                   while Pairing_heap.length hits.(j) > maximumFrontier.(j) do
+                     Pairing_heap.remove_top hits.(j)
                    done;
                    if verbose then
                      Printf.eprintf
@@ -388,16 +388,16 @@ let enumerate_for_tasks enumeration_backend ?verbose:(verbose = true)
                 let new_heap = array_of_heaps.(j) in
                 let old_heap = hits.(j) in
                 List.iter new_heap ~f:(fun element ->
-                    if not (Heap.mem old_heap ~equal:(=) element) then
-                      (Heap.add old_heap element;
-                       if Heap.length old_heap > maximumFrontier.(j)
-                       then Heap.remove_top old_heap))))
+                    if not (Pairing_heap.mem old_heap ~equal:(=) element) then
+                      (Pairing_heap.add old_heap element;
+                       if Pairing_heap.length old_heap > maximumFrontier.(j)
+                       then Pairing_heap.remove_top old_heap))))
       ;
       
       lower_bound := budgetIncrement+. (!lower_bound);
 
     done ;
     
-  (hits |> Array.to_list |> List.map ~f:Heap.to_list,
+  (hits |> Array.to_list |> List.map ~f:Pairing_heap.to_list,
    !total_number_of_enumerated_programs)
 

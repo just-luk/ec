@@ -108,7 +108,7 @@ let rec map_list f = function
   | [] -> [f []]
   | (x :: xs) -> (f (x :: xs)) :: (map_list f xs)
 
-let is_invalid (x : float) = x <> x || x = Float.infinity || x = Float.neg_infinity;;
+let is_invalid (x : float) = Float.(x <> x || x = Float.infinity || x = Float.neg_infinity);;
 let is_valid = compose not is_invalid;;
 
 let rec last_one = function
@@ -133,9 +133,9 @@ let log2 = log 2.
 
 let lse x y = 
   if is_invalid x then y else if is_invalid y then x else
-  if x > y
-  then x +. log (1.0 +. exp (y-.x))
-  else y +. log (1.0 +. exp (x-.y))
+  if Float.(x > y)
+  then Float.(x +. log (1.0 +. exp (y-.x)))
+  else Float.(y +. log (1.0 +. exp (x-.y)))
 
 let softMax = lse
 
@@ -144,9 +144,9 @@ let lse_list (l : float list) : float =
   List.fold_left l ~f:lse ~init:Float.neg_infinity
 
 (* log difference exponential: log(e^x - e^y) = x+log(1-e^(y-x)) *)
-let lde x y = 
-  assert(x >= y);
-  x +. log (1. -. exp (y-.x))
+let lde (x: float) (y: float) = 
+  assert Float.(x >= y);
+  Float.(x +. log (1. -. exp (y -. x)))
 
 
 let rec remove_duplicates l = 
@@ -177,7 +177,7 @@ let flip f x y = f y x
 
 let (--) i j = 
   let rec aux n acc =
-    if n < i then acc else aux (n-1) (n :: acc)
+    if Int.(n < i) then acc else aux (n-1) (n :: acc)
   in aux j []
 
 let range n = 0 -- (n-1);;
@@ -185,7 +185,7 @@ let range n = 0 -- (n-1);;
 
 let float_interval (i : float) (s : float) (j : float) : float list = 
   let rec aux n acc =
-    if n < i then acc else aux (n-.s) (n :: acc)
+    if Float.(n < i) then acc else aux (n-.s) (n :: acc)
   in aux j []
 
 (* let time () = *)
@@ -209,7 +209,7 @@ let time_it ?verbose:(verbose=true) description callback =
 let shuffle d = begin
     Random.self_init ();
     let nd = List.map ~f:(fun c -> (Random.bits (), c)) d in
-    let sond = List.sort compare nd in
+    let sond = List.sort ~compare:(fun (bits1, _) (bits2, _) -> compare bits1 bits2) nd in
     List.map ~f:snd sond
   end
 
@@ -253,7 +253,7 @@ let cpu_count () =
 let string_proper_prefix p s = 
   let rec loop n = 
     (n >= String.length p) ||
-    (p.[n] = s.[n] && loop (n+1))
+    ((Char.equal p.[n] s.[n]) && loop (n+1))
   in 
   String.length p < String.length s && loop 0
 
@@ -289,16 +289,16 @@ let print_arguments () =
 (* samplers adapted from gsl *)
 let rec uniform_positive () = 
   let u = Random.float 1.0 in
-  if u > 0.0 then u else uniform_positive ()
+  if Float.(u > 0.0) then u else uniform_positive ()
 
-let uniform_interval ~l ~u =
-  assert (u > l);
+let uniform_interval ~(l: float) ~(u: float) : float =
+  assert Float.(u > l);
   let x = uniform_positive() in
-  (l+.u)/.2. +. (u-.l)*.x
+  (l +. u) /. 2.0 +. (u -. l) *. x
 
 
 let rec sample_gamma a b = 
-  if a < 1.0
+  if Float.(a < 1.0)
   then
     let u = uniform_positive () in
     (sample_gamma (1.0 +. a) b) *. (u ** (1.0 /. a))
@@ -309,13 +309,13 @@ let rec sample_gamma a b =
       let rec inner_loop () = 
         let x = normal 1.0 0.0 in
         let v = 1.0 +. c *. x in
-        if v > 0.0 then (v,x) else inner_loop ()
+        if Float.(v > 0.0) then (v,x) else inner_loop ()
       in
       let (v,x) = inner_loop () in
       let v = v*.v*.v in
       let u = uniform_positive () in
-      if (u < 1.0 -. 0.0331 *. x *. x *. x *. x) ||
-         (log u < 0.5 *. x *. x +. d *. (1.0 -. v +. log v)) 
+      if Float.(u < 1.0 -. 0.0331 *. x *. x *. x *. x) ||
+         Float.(log u < 0.5 *. x *. x +. d *. (1.0 -. v +. log v)) 
       then b *. d *. v
       else loop ()
     in loop ()
@@ -354,7 +354,9 @@ let command_output cmd =
   let buf = Buffer.create 16 in
   (try
      while true do
-       Buffer.add_channel buf ic 1
+       let line = input_line ic in
+       Buffer.add_string buf line;
+       Buffer.add_char buf '\n'
      done
    with End_of_file -> ());
   let _ = Unix.close_process (ic, oc) in

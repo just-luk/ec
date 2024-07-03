@@ -135,19 +135,19 @@ let rec match_regex random (state : match_state) r return = match r with
 
 
 let match_regex regex s =
-  let h = Heap.create ~cmp:(fun (s1,_) (s2,_) -> Float.compare s2 s1) () in
+  let h = Pairing_heap.create ~cmp:(fun (s1,_) (s2,_) -> Float.compare s2 s1) () in
 
   let final_state = ref None in
 
   match_regex (fun state k ->
-      Heap.add h (state.match_likelihood, k))
+      Pairing_heap.add h (state.match_likelihood, k))
     {match_target=s; match_likelihood=0.;}
     regex
     (fun final ->
        if final.match_target = [] then  
          final_state := Some(final));
-  while !final_state = None && not (Heap.is_empty h) do
-    let _,k = Heap.pop_exn h in
+  while !final_state = None && not (Pairing_heap.is_empty h) do
+    let _,k = Pairing_heap.pop_exn h in
     k()
   done;
   match !final_state with
@@ -242,8 +242,8 @@ and consume cont = (* return a list of continuation, score tuples? *)
 let preg_match preg str = (* dikjstras *)
 
   let cmp = fun (_, score1) (_, score2) -> Float.compare score2 score1 in 
-  let heap = Heap.create ~cmp:cmp () in
-  Heap.add heap ((Some(preg), str), 0.);
+  let heap = Pairing_heap.create ~cmp:cmp () in
+  Pairing_heap.add heap ((Some(preg), str), 0.);
   let visited = Hash_set.Poly.create() in
   let solution = ref None in
 
@@ -256,12 +256,12 @@ let preg_match preg str = (* dikjstras *)
 	  | (None, []) -> 
 	    solution := Some(newscore) (* TODO output *)
           | _ ->
-            Heap.add heap (cont, newscore)
+            Pairing_heap.add heap (cont, newscore)
         end)
   in 
 
-  while !solution = None && not (Heap.top heap = None) do
-    match Heap.pop heap with
+  while !solution = None && not (Pairing_heap.top heap = None) do
+    match Pairing_heap.pop heap with
     | Some(partial) -> consume_loop partial
     | None -> assert false		
   done;

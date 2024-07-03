@@ -14,7 +14,7 @@ let rec tp_eq a b =
   match (a,b) with
   | (TID(x),TID(y)) -> x = y
   | (TCon(k1,as1,_),TCon(k2,as2,_)) ->
-    k1 = k2 && (type_arguments_equal as1 as2)
+    (String.equal k1 k2) && (type_arguments_equal as1 as2)
   | _ -> false
 and type_arguments_equal xs ys =
   match (xs,ys) with
@@ -71,7 +71,7 @@ let rec show_type (is_return : bool) (t : tp) : string =
   match t with
   | TID(i) -> "t"^string_of_int i
   | TCon(k,[],_) -> k
-  | TCon(k,[p;q],_) when k = "->" ->
+  | TCon(k,[p;q],_) when (String.equal k "->") ->
     if is_return then
       (show_type false p)^" -> "^(show_type true q)
     else
@@ -157,7 +157,7 @@ exception UnificationFailure
 
 let rec might_unify t1 t2 = 
   match (t1, t2) with
-  | (TCon(k1,as1,_), TCon(k2,as2,_)) when k1 = k2 -> 
+  | (TCon(k1,as1,_), TCon(k2,as2,_)) when (String.equal k1 k2) -> 
     List.for_all2_exn as1 as2 might_unify
   | (TID(_),_) -> true
   | (_,TID(_)) -> true
@@ -176,9 +176,9 @@ let rec unify context t1 t2 : tContext =
       if tp_eq t1 t2 then context 
       else (if occurs j t then raise UnificationFailure else bindTID j t context)
     | (t,TID(j)) ->
-      if t1 = t2 then context 
+      if tp_eq t1 t2 then context 
       else (if occurs j t then raise UnificationFailure else bindTID j t context)
-    | (TCon(k1,as1,_),TCon(k2,as2,_)) when k1 = k2 ->
+    | (TCon(k1,as1,_),TCon(k2,as2,_)) when (String.equal k1 k2) ->
       List.fold2_exn ~init:context as1 as2 ~f:unify
     | _ -> raise UnificationFailure
 
@@ -289,7 +289,7 @@ let canonical_types ts =
 
 
 let rec get_arity = function
-  | TCon(a,[_;r],_) when a = "->" -> 1+get_arity r
+  | TCon(a,[_;r],_) when (String.equal a "->") -> 1+get_arity r
   | _ -> 0
 
 let rec pad_type_with_arguments context n t =
