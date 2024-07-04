@@ -401,8 +401,70 @@ let primitive_constant_strings = [primitive "','" tcharacter ',';
  *     (fun d xs -> join ~separator:d xs);;
  * let primitive_character_to_string = primitive "chr2str" (tcharacter @> tstring) (String.of_char);; *)
 
+(* Numerical *)
+type numerical = 
+ | Int of int
+ | IntTuple of int * int
 
+(* IntegerSet *)
+module IntSet = Set.Make(struct 
+  type t = int 
+  [@@deriving compare, sexp]
+end)
+type integer_set = IntSet.t
 
+type grid = (int * int) array
+
+(* Object *)
+module CellSet = Set.Make(struct 
+ type t = int * (int * int) 
+ [@@deriving compare, sexp]
+end)
+type object_t = CellSet.t
+
+module ObjectSet = Set.Make(struct 
+  type t = CellSet.t 
+  [@@deriving compare, sexp]
+end)
+type objects = ObjectSet.t
+
+module IndicesSet = Set.Make(struct 
+  type t = int * int 
+  [@@deriving compare, sexp]
+end)
+type indices = IndicesSet.t
+
+type patch = 
+  | PatchObject of object_t
+  | PatchIndices of indices
+
+type element = 
+  | ElementObject of object_t
+  | ElementGrid of grid
+
+type piece = 
+  | PieceGrid of grid
+  | PiecePatch of patch
+  
+type tuple_tuple = (int * int) array array
+
+(* ContainerContainer *)
+module type CONTAINER = sig 
+  type t
+  type element
+  val elements : t -> element list
+end
+
+module ContainerContainer(C: CONTAINER) = struct 
+  type container_container = C.t list
+end
+
+let primitive_identity = primitive "identity" (t0 @> t0) (fun x -> x);;
+let primitive_divide = primitive "divide" (tint @> tint @> tint) (fun x y -> x / y);;
+let primitive_even = primitive "even" (tint @> tboolean) (fun x -> x mod 2 = 0);;
+let primitive_invert = primitive "invert" (tint @> tint) (fun x -> 0-x);;
+let primitive_flip = primitive "flip" (tboolean @> tboolean) (not);;
+let primitive_equality = primitive "equality" (t0 @> t0 @> tboolean) (fun x y -> x = y);;
 
 let primitive0 = primitive "0" tint 0;;
 let primitive1 = primitive "1" tint 1;;
