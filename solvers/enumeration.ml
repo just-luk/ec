@@ -1,5 +1,4 @@
 open Core
-open Core_kernel
 
 open Parallel
 
@@ -111,7 +110,7 @@ let string_of_state {skeleton;context;path;cost} =
 let state_finished {path;skeleton;} =
   match skeleton with
   | Primitive(_,"??",_) -> false
-  | _ -> (List.length path = 0)
+  | _ -> path = []
 
 let initial_best_first_state request (g : grammar) =
   {skeleton = primitive_unknown request g;
@@ -220,33 +219,33 @@ let best_first_enumeration ?lower_bound:(lower_bound=None)
   let completed = ref [] in
   
   let pq =
-  Pairing_heap.create
+  Heap.create
       ~cmp:(fun s1 s2 ->
               let c = s1.cost -. s2.cost in
-              if Float.(c < 0.) then -1 else if Float.(c > 0.) then 1 else 0) ()
+              if c < 0. then -1 else if c > 0. then 1 else 0) ()
   in
-  Pairing_heap.add pq (initial_best_first_state request cg.no_context);
+  Heap.add pq (initial_best_first_state request cg.no_context);
 
-  while Pairing_heap.length pq > 0 && Pairing_heap.length pq < frontier_size do
-    let best = Pairing_heap.pop_exn pq in
+  while Heap.length pq > 0 && Heap.length pq < frontier_size do
+    let best = Heap.pop_exn pq in
     assert (not (state_finished best));
     (* Printf.printf "\nParent:\n%s\n" (string_of_state best); *)
     state_successors ~maxFreeParameters:maxFreeParameters cg best |> List.iter ~f:(fun child ->
         if state_finished child
         then
-          (if Float.(lower_bound <= child.cost) && Float.(child.cost < upper_bound) then completed := child :: !completed else ())
+          (if lower_bound <= child.cost && child.cost < upper_bound then completed := child :: !completed else ())
         else
-          (if Float.(child.cost < upper_bound) then Pairing_heap.add pq child else ()))
+          (if child.cost < upper_bound then Heap.add pq child else ()))
   done;
 
   (!completed,
-   Pairing_heap.to_list pq)
+   Heap.to_list pq)
 
       
 (* Depth first enumeration *)
 let enumeration_timeout = ref Float.max_value;;
 let enumeration_timeout_starting = ref Float.max_value;;
-let enumeration_timed_out() = Float.(Unix.time() > !enumeration_timeout);;
+let enumeration_timed_out() = Unix.time() > !enumeration_timeout;;
 let enumeration_timeout_elapsed() = Unix.time() -. !enumeration_timeout_starting;;
 let set_enumeration_timeout dt =
   enumeration_timeout_starting := Unix.time();
@@ -263,7 +262,7 @@ let rec enumerate_programs' (cg : contextual_grammar) (g: grammar) (context: tCo
     (callBack: program -> tContext -> float -> int -> unit) : unit =
   (* Enumerates programs satisfying: lowerBound <= MDL < upperBound *)
   (* INVARIANT: request always has the current context applied to it already *)
-  if enumeration_timed_out() || maximumDepth < 1 || Float.(upper_bound < 0.0) then () else
+  if enumeration_timed_out() || maximumDepth < 1 || upper_bound < 0.0 then () else
     match request with
     | TCon("->",[argument_type;return_type],_) ->
       let newEnvironment = argument_type :: environment in
@@ -279,7 +278,7 @@ let rec enumerate_programs' (cg : contextual_grammar) (g: grammar) (context: tCo
       candidates |>
       List.iter ~f:(fun (candidate, argument_types, context, ll) ->
           let mdl = 0.-.ll in
-          if Float.(mdl >= upper_bound) ||
+          if mdl >= upper_bound ||
              (match parent with
               | None -> false
               | Some((p,j)) -> violates_symmetry p candidate j)
@@ -311,11 +310,11 @@ and
     (callBack: program -> tContext -> float -> int -> unit) : unit =
   (* Enumerates application chains satisfying: lowerBound <= MDL < upperBound *)
   (* returns the log likelihood of the arguments! not the log likelihood of the application! *)
-  if enumeration_timed_out() || maximumDepth < 1 || Float.(upper_bound < 0.0) then () else
+  if enumeration_timed_out() || maximumDepth < 1 || upper_bound < 0.0 then () else
     match argument_requests with
     | [] -> (* not a function so we don't need any applications *)
       begin
-        if Float.(lower_bound <= 0.) && Float.(0. < upper_bound) then
+        if lower_bound <= 0. && 0. < upper_bound then
           (* match f with
            * | Apply(Apply(Primitive(_,function_name,_),first_argument),second_argument)
            *   when violates_commutative function_name first_argument second_argument -> ()
@@ -431,7 +430,7 @@ let multicore_enumeration ?extraQuiet:(extraQuiet=false) ?final:(final=fun () ->
   let fringe = fringe |>
                List.sort ~compare:(fun s1 s2 ->
                    let d = s1.cost -. s2.cost in
-                   if Float.(d > 0.) then 1 else if Float.(d < 0.) then -1 else 0)
+                   if d > 0. then 1 else if d < 0. then -1 else 0)
   in
 
   if cores > 1 then

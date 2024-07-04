@@ -81,7 +81,7 @@ let primitive_name = function | Primitive(_,n,_) -> n
                               | e -> raise (Failure ("primitive_name: "^string_of_program e^"not a primitive"))
 
 let rec program_equal p1 p2 = match (p1,p2) with
-  | (Primitive(_,n1,_),Primitive(_,n2,_)) -> (String.equal n1 n2)
+  | (Primitive(_,n1,_),Primitive(_,n2,_)) -> n1 = n2
   | (Abstraction(a),Abstraction(b)) -> program_equal a b
   | (Invented(_,a),Invented(_,b)) -> program_equal a b
   | (Index(a),Index(b)) -> a = b
@@ -524,7 +524,7 @@ ignore(primitive "abbreviate" (tstring @> tstring) (fun s ->
     let rec f = function
       | [] -> []
       | ' ' :: cs -> f cs
-      | c :: cs -> c :: f (List.drop_while cs ~f:(fun c' -> not (Char.equal c' ' ')))
+      | c :: cs -> c :: f (List.drop_while cs ~f:(fun c' -> not (c' = ' ')))
     in f s));;
 ignore(primitive "last-word" (tcharacter @> tstring @> tstring)
          (fun c s ->
@@ -784,7 +784,7 @@ let primitive_recursion2 =
 
 
 let is_recursion_of_arity a = function
-  | Primitive(_,n,_) -> String.(("fix" ^  (Int.to_string a)) = n)
+  | Primitive(_,n,_) -> ("fix"^(Int.to_string a)) = n
   | _ -> false
 
 let is_recursion_primitive = function
@@ -794,7 +794,7 @@ let is_recursion_primitive = function
 
 
 let program_parser : program parsing =
-  let token = token_parser (fun c -> Char.is_alphanum c || List.mem ~equal:( Char.equal )
+  let token = token_parser (fun c -> Char.is_alphanum c || List.mem ~equal:( = )
                                        ['_';'-';'?';'/';'.';'*';'\'';'+';',';
                                         '>';'<';'@';'|';] c) in
   let whitespace = token_parser ~can_be_empty:true Char.is_whitespace in
@@ -889,7 +889,7 @@ let parsing_test_case s =
   program_parser (s,0) |> List.iter ~f:(fun (p,n) ->
       if n = String.length s then
         (Printf.printf "Parsed into the program: %s\n" (string_of_program p);
-         assert String.(s = (string_of_program p));
+         assert (s = (string_of_program p));
         flush_everything())
       else
         (Printf.printf "With the suffix %n, we get the program %s\n" n (string_of_program p);

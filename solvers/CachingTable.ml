@@ -96,9 +96,7 @@ module CachingTable = struct
       (match m.oldest_key with
        | None -> m.oldest_key <- Some(entry)
        | Some(_) -> ());
-      (match Hashtbl.add m.mapping ~key:k ~data:(v, entry) with
-       | `Ok -> ()
-       | `Duplicate -> failwith "Duplicate key");
+      assert (Hashtbl.add m.mapping ~key:k ~data:(v, entry) = `Ok);
       collect m
 
     | Some((_,entry)) ->
@@ -139,14 +137,10 @@ module CachingTable = struct
     (match m.newest_key, m.oldest_key with
      | None, None -> ()
      | Some(newest), Some(oldest) ->
-      begin
-        match oldest.previous, newest.next with
-        | None, None ->
-          forward oldest;
-          backward newest
-        | _ ->
-          raise (Invalid_argument "Unexpected previous or next link")
-      end
+       (assert (oldest.previous = None);
+        assert (newest.next = None);
+        forward oldest;
+        backward newest)
      | None, Some(_) -> assert (false)
      | Some(_), None -> assert (false));
 

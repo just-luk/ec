@@ -86,14 +86,14 @@ let unifying_expressions g environment request context : (program*tp list*tConte
         else None)
   in
   let variable_candidates = match (variable_candidates, g.continuation_type) with
-      | (_ :: _, Some(t)) when (tp_eq t request) -> 
+      | (_ :: _, Some(t)) when t = request -> 
         let terminal_indices = List.filter_map variable_candidates ~f:(fun (p,t,_,_) ->
-            if List.length t = 0 then Some(get_index_value p) else None) in
-        if List.length terminal_indices = 0 then variable_candidates else
+            if t = [] then Some(get_index_value p) else None) in
+        if terminal_indices = [] then variable_candidates else
           let smallest_terminal_index = fold1 min terminal_indices in
           variable_candidates |> List.filter ~f:(fun (p,t,_,_) ->
               let okay = not (is_index p) ||
-                         not (List.length t = 0) ||
+                         not (t = []) ||
                          get_index_value p = smallest_terminal_index in
               (* if not okay then *)
               (*   Printf.eprintf "Pruning imperative index %s with request %s; environment=%s; smallest=%i\n" *)

@@ -85,7 +85,7 @@ let random_variable ?mean:(mean = 0.) ?standard_deviation:(standard_deviation = 
   in s
 
 let update_variable v x =
-  assert (List.length v.arguments = 0);
+  assert (v.arguments = []);
   v.data <- Some(x)
 
 
@@ -119,20 +119,20 @@ let square_root =
 
 let clamp ~l ~u =
   make_unitary_variable (fun a ->
-      if Float.(a > u) then u else
-      if Float.(a < l) then l else
+      if a > u then u else
+      if a < l then l else
         a)
     (fun a ->
-       if Float.(a > u) || Float.(a < l) then [0.] else [1.])
+       if a > u || a < l then [0.] else [1.])
     
 
 let log_soft_max xs =
   make_variable (fun vs -> 
-      let m : float = List.fold_right vs ~init:Float.neg_infinity  ~f:Float.max in
+      let m : float = List.fold_right vs ~init:Float.neg_infinity  ~f:max in
       let zm = List.fold_right ~init:0. ~f:(fun x a -> exp (x -. m) +. a) vs in
       m+. (log zm))
     (fun vs -> 
-      let m : float = List.fold_right vs ~init:Float.neg_infinity  ~f:Float.max in
+      let m : float = List.fold_right vs ~init:Float.neg_infinity  ~f:max in
       let zm = List.fold_right ~init:0. ~f:(fun x a -> exp (x -. m) +. a) vs in
       List.map vs ~f:(fun x -> (exp (x-.m)) /. zm))
     xs
@@ -153,7 +153,7 @@ let rec zero_gradients z =
       List.iter z.arguments ~f:(fun a -> zero_gradients a);
       z.gradient <- None;
       z.descendents <- [];
-      if (List.length z.arguments = 0) then () else z.data <- None
+      if z.arguments = [] then () else z.data <- None
     end
 
 let rec forward z =
@@ -206,7 +206,7 @@ let restarting_optimize opt ?update:(update = 1000)
       parameters |> List.iter ~f:(fun parameter ->
           update_variable parameter (uniform_interval ~l:(-5.) ~u:5.));
       run_optimizer opt ~update:update ~iterations:iterations parameters loss) |>
-  fold1 Float.min
+  fold1 min
 
 let gradient_descent ?lr:(lr = 0.001) =
   List.map ~f:(fun dx -> ~-. (lr*.dx))
@@ -217,7 +217,7 @@ let rprop ?lr:(lr=0.1) ?decay:(decay=0.5) ?grow:(grow=1.2) =
   let individual_rates = ref [] in
 
   fun dxs ->
-    let new_signs = dxs |> List.map ~f:(fun (dx: float) -> Float.(dx > 0.)) in
+    let new_signs = dxs |> List.map ~f:(fun dx -> dx > 0.) in
     if !first_iteration then begin
       first_iteration := false;
       (* First iteration: ignore the previous signs, which have not yet been recorded *)
@@ -230,15 +230,15 @@ let rprop ?lr:(lr=0.1) ?decay:(decay=0.5) ?grow:(grow=1.2) =
     end else begin 
       individual_rates := List.map3_exn !individual_rates !previous_signs new_signs
           ~f:(fun individual_rate previous_sign new_sign ->
-              if Bool.(previous_sign = new_sign)
+              if previous_sign = new_sign
               then individual_rate*.grow
               else individual_rate*.decay);
       
       let updates = List.map2_exn !individual_rates dxs
-          ~f:(fun (individual_rate: float) (dx : float) ->
-              if Float.(dx > 0.)
+          ~f:(fun individual_rate dx ->
+              if dx > 0.
               then ~-. individual_rate
-              else if Float.(dx < 0.) then individual_rate else 0.)
+              else if dx < 0. then individual_rate else 0.)
       in
       previous_signs := new_signs;
       updates

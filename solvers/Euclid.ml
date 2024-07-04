@@ -31,4 +31,4 @@ let eqTriangle =
       TwoD(Line(Id1(P(P(P(P(P(P(C))))))),Id1(P(P(P(C)))))) ]
 
 let _ = (* Do nothing. I'm interested in the typing so far. *)
-  print_endline ("Success, I was typed." : string)
+  print_endline "Success, I was typed."
